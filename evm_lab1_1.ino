@@ -5,7 +5,7 @@ void setup() {
 }
 
 void loop() {
-  if (!digitalRead(D3)==HIGH) {
+  if ((!digitalRead(D3))==HIGH) {
     digitalWrite(D0, HIGH);
   }
   else{
