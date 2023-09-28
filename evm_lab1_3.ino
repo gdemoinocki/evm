@@ -1,4 +1,4 @@
-int state = 0;
+uint8_t CrrentD3 = 0;
 
 void setup() {
   pinMode(D0, OUTPUT);
@@ -8,30 +8,35 @@ void setup() {
 }
 
 void loop() {
-  if (digitalRead(D3)==HIGH) {
-    if (state == 0){
+  if (digitalRead(D3)==LOW) {
+    if (CrrentD3 == 0){
     digitalWrite(D0, HIGH);
     digitalWrite(D1, LOW);
     digitalWrite(D2, LOW);
-    state = 1;
+    CrrentD3 = 1;
     }
-    if (state == 1){
-    digitalWrite(D0, LOW);
-    digitalWrite(D1, HIGH);
-    digitalWrite(D2, LOW);
-    state = 2;
+    else{
+      if (CrrentD3 == 1){
+        digitalWrite(D0, LOW);
+        digitalWrite(D1, HIGH);
+        digitalWrite(D2, LOW);
+        CrrentD3 = 2;
+      }
+      else{
+        if (CrrentD3 == 2){
+          digitalWrite(D0, LOW);
+          digitalWrite(D1, LOW);
+          digitalWrite(D2, HIGH);
+          CrrentD3 = 3;
+        }
+        else{
+          digitalWrite(D0, LOW);
+          digitalWrite(D1, LOW);
+          digitalWrite(D2, LOW);
+          CrrentD3 = 0;
+        }
+      }
     }
-    if (state == 2){
-    digitalWrite(D0, LOW);
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, HIGH);
-    state = 0;
-    }
+    delay(200);
   }
-  else{
-    digitalWrite(D0, LOW);
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, LOW);
-  }
-  delay(200)
 }
