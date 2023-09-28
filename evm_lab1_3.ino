@@ -33,4 +33,5 @@ void loop() {
     digitalWrite(D1, LOW);
     digitalWrite(D2, LOW);
   }
+  delay(200)
 }
