@@ -9,7 +9,7 @@ void setup() {
 }
 
 void loop() {
-  if ((millis() - timerCount) > 2000){
+  if ((millis() - timerCount) > 500){
     timerCount = millis();
     if (step == 0){
       digitalWrite(D0, HIGH);
@@ -26,12 +26,11 @@ void loop() {
       digitalWrite(D1, LOW);
       digitalWrite(D2, HIGH);
     }
-    else{
-      step = 0;
-    }
     ++step;
+    if (step >= 3) step = 0;
   }
 }
+
 
 
 
