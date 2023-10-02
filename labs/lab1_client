@@ -1,0 +1,40 @@
+using System;
+using System.IO;
+using System.IO.Pipes;
+using System.Runtime.CompilerServices;
+
+class PipeClient
+{
+    struct Numbers
+    {
+        public int number1;
+        public int number2;
+    }
+
+    static void Main(string[] args)
+    {
+        using (NamedPipeClientStream pipeClient =
+            new NamedPipeClientStream(".", "cspipe", PipeDirection.InOut))
+        {
+            //Подключение
+            Console.Write("Attempting to connect to pipe...");
+            pipeClient.Connect();
+
+            Console.WriteLine("Connected to pipe.");
+
+            byte[] bytes = new byte[Unsafe.SizeOf<Numbers>()];
+            pipeClient.Read(bytes);
+            Numbers receivedData = Unsafe.As<byte, Numbers>(ref bytes[0]);
+            Console.WriteLine("Number 1: " + receivedData.number1);
+            Console.WriteLine("Number 2: " + receivedData.number2);
+            receivedData.number1 = receivedData.number1 * 2 + receivedData.number2;
+            Console.WriteLine("Number 1 *2 + Number 2: " + receivedData.number1);
+            byte[] modifiedBytes = new byte[Unsafe.SizeOf<Numbers>()];
+            Unsafe.As<byte, Numbers>(ref modifiedBytes[0]) = receivedData;
+            pipeClient.Write(modifiedBytes);
+
+        }
+        Console.Write("Press Enter to continue...");
+        Console.ReadLine();
+    }
+}
