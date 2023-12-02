@@ -1,0 +1,122 @@
+using System.Diagnostics;
+using System.IO;
+using System.IO.Pipes;
+using System.Runtime.CompilerServices;
+
+public struct Numbers
+{
+    public double number1;
+    public double number2;
+    public double result;
+    public int priority;
+}
+internal static class PipeServer
+{
+    private static PriorityQueue<Numbers, int> dataQueue = new PriorityQueue<Numbers, int>();
+    private static Mutex mut = new Mutex();
+    private static StreamWriter writer = new($"C:\\Users\\4769003\\Downloads\\output.txt");
+    private static int count = 0;
+
+    private static async Task Main()
+    {
+        CancellationTokenSource source = new CancellationTokenSource();
+        CancellationToken token = source.Token;
+        Console.WriteLine("Введите Ctrl+C для остановки.");
+        Console.CancelKeyPress += (sender, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            source.Cancel();
+        };
+        Console.WriteLine("12345678");
+        try
+        {
+            await Task.WhenAll(SenderAsync(token), ReceiverAsync(token)); ; ;
+        {
+            Console.WriteLine(error.Message);
+        }
+        finally
+        {
+            writer.Close();
+        }
+
+        Task SenderAsync(CancellationToken token)
+        {
+            return Task.Run(() =>
+            {
+                while (!token.IsCancellationRequested)
+                { 
+                    double _number1, _number2;
+                    int _priority;
+                    Console.Write("Enter number1: ");
+                    double.TryParse(Console.ReadLine(), out _number1);
+                    Console.Write("Enter number2: ");
+                    double.TryParse(Console.ReadLine(), out _number2);
+                    Console.Write("Enter priority: ");
+                    if (!int.TryParse(Console.ReadLine(), out _priority))
+                        _priority = 0;
+                    Numbers data = new Numbers
+                    {
+                        number1 = _number1,
+                        number2 = _number2,
+                        priority = _priority
+                    };
+                    mut.WaitOne();
+                    dataQueue.Enqueue(data, _priority);
+                    mut.ReleaseMutex();
+                }
+            });
+        }
+        Task ReceiverAsync(CancellationToken token)
+        {
+            
+            return Task.Run(async () =>
+            {
+
+                while (!token.IsCancellationRequested)
+                {
+                    Numbers cs;           
+                    int pr; 
+                    mut.WaitOne();
+                    bool flag = dataQueue.TryDequeue(out cs, out pr);
+                    mut.ReleaseMutex();
+                    if (flag)
+                    {
+                        ClientProcess(cs, token);
+                    }
+                }
+            });
+        }
+    }
+    static async void ClientProcess(Numbers cs, CancellationToken token)
+    {
+        try
+        {
+            byte[] dataBytes = new byte[Unsafe.SizeOf<Numbers>()];
+            Unsafe.As<byte, Numbers>(ref dataBytes[0]) = cs;
+            NamedPipeServerStream pipeServer = new($"channel{count}", PipeDirection.InOut);
+            Console.Write("Ожидание подключения клиента...");
+
+            Process myProcess = new Process();
+            myProcess.StartInfo.FileName = "C:\\Users\\4769003\\source\\repos\\EVM_LAB3\\Client\\bin\\Debug\\net7.0\\Client.exe";
+            myProcess.StartInfo.Arguments = $"channel{count}";
+            myProcess.StartInfo.CreateNoWindow = true;
+            myProcess.Start();
+            await pipeServer.WaitForConnectionAsync();
+            Console.WriteLine("Клиент подключен.");
+
+            await pipeServer.WriteAsync(dataBytes, 0, dataBytes.Length);
+            byte[] receivedBytes = new byte[Unsafe.SizeOf<Numbers>()];
+            if (await pipeServer.ReadAsync(receivedBytes, 0, receivedBytes.Length) == receivedBytes.Length)
+            {
+                cs = Unsafe.As<byte, Numbers>(ref receivedBytes[0]);
+            }
+            Console.WriteLine($"Полученные даныые: a = {cs.number1}; b = {cs.number2}; priority = {cs.priority}; result = {cs.result}");
+            writer.WriteLine($"a = {cs.number1}; b = {cs.number2}; priority = {cs.priority}; result = {cs.result}");
+            pipeServer.Close(); 
+            count++;
+            await myProcess.WaitForExitAsync(token);
+            writer.Close();
+        }
+        catch (Exception) { }
+    }
+}
