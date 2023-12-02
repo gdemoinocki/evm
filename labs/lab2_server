@@ -1,0 +1,85 @@
+
+using System.IO;
+using System.IO.Pipes;
+using System.Runtime.CompilerServices;
+
+public  struct Numbers
+{
+    public int number1;
+    public int number2;
+}
+internal static class PipeServer
+{
+    private static PriorityQueue<Numbers, int> dataQueue = new PriorityQueue<Numbers, int>();
+    private static Mutex mut = new Mutex();
+    private static StreamWriter writer = new($"C:\\Users\\4769003\\Downloads\\output.txt");
+    private static Task Main()
+    {
+        CancellationTokenSource source = new CancellationTokenSource();
+        CancellationToken token = source.Token;
+        NamedPipeServerStream pipeServer = new NamedPipeServerStream("cspipe", PipeDirection.InOut);
+        Console.Write("Ожидание подключения клиента...");
+        pipeServer.WaitForConnection();
+        Console.WriteLine("Клиент подключен.");
+        Console.WriteLine("Введите Ctrl+C для остановки.");
+        Console.CancelKeyPress += (sender, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            source.Cancel();
+        };        
+        return Task.WhenAll(SenderAsync(pipeServer, token), ReceiverAsync(pipeServer, token));
+        
+        Task SenderAsync(NamedPipeServerStream pipeServer, CancellationToken token)
+        {
+            return Task.Run(() =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    int _number1, _number2, _priority;
+                    Console.Write("Enter number1: ");
+                    int.TryParse(Console.ReadLine(), out _number1);
+                    Console.Write("Enter number2: ");
+                    int.TryParse(Console.ReadLine(), out _number2);
+                    Console.Write("Enter priority: ");
+                    if (!int.TryParse(Console.ReadLine(), out _priority))
+                        _priority = 0;
+                    Numbers data = new Numbers
+                    {
+                        number1 = _number1,
+                        number2 = _number2,
+                    };
+                    mut.WaitOne();
+                    dataQueue.Enqueue(data, _priority);
+                    mut.ReleaseMutex();
+                }
+            });
+        }
+        Task ReceiverAsync(NamedPipeServerStream pipeServer, CancellationToken token)
+        {
+            return Task.Run(() =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    Numbers cs;
+                    int pr;
+                    mut.WaitOne();
+                    bool flag = dataQueue.TryDequeue(out cs, out pr);
+                    mut.ReleaseMutex();
+                    if (flag)
+                    {
+                        byte[] dataBytes = new byte[Unsafe.SizeOf<Numbers>()];
+                        Unsafe.As<byte, Numbers>(ref dataBytes[0]) = cs;
+                        pipeServer.Write(dataBytes, 0, dataBytes.Length);
+                        byte[] receivedBytes = new byte[Unsafe.SizeOf<Numbers>()];
+                        if (pipeServer.Read(receivedBytes, 0, receivedBytes.Length) == receivedBytes.Length)
+                        {
+                            cs = Unsafe.As<byte, Numbers>(ref receivedBytes[0]);
+                        }
+                        writer.WriteLine($"n = {cs.number1}; m = {cs.number2}; priority = {pr}\n");
+                    }                  
+                }
+                writer.Close();
+            });
+        }
+    }
+}
