@@ -2,29 +2,25 @@
 
 const int I2C_ADDR = 32;  
 const int pwm_pin = 8;   
-
 // Структура для хранения данных от энкодера
 struct EncoderData {
-  int EncoderValue;  // Значение от энкодера
+  int hiddenEncoder;  
 };
 
 void receiveEvent(int sizeBytes) {
   if (sizeBytes == sizeof(EncoderData)) {  // Проверяем размер принятых данных
-    uint8_t* array = new uint8_t[sizeof(EncoderData)];  // Создаем массив байт для данных
-    Wire.readBytes(array, sizeof(EncoderData));  // Читаем данные из шины I2C в массив
-
-    EncoderData* dataRec = reinterpret_cast<EncoderData>(array);  // Преобразуем массив байт в структуру
-    Serial.println(dataRec->EncoderValue);  // Выводим значение от энкодера в Serial Monitor
-    analogWrite(pwm_pin, dataRec->EncoderValue);  // Устанавливаем значение энкодера на PWM выходе
-
-    delete[] array;  
+    EncoderData dataRec;
+    Wire.readBytes(reinterpret_cast<uint8_t*>(&dataRec), sizeof(EncoderData));
+    Serial.println(dataRec.hiddenEncoder);//Выводим значение от энкодера в Serial Monitor
+    analogWrite(pwm_pin, dataRec.hiddenEncoder); //// Устанавливаем значение энкодера на PWM выходе
   }
 }
 
 void setup() {
   Wire.begin(I2C_ADDR);  // Инициализируем шину I2C с указанным адресом
   Wire.onReceive(receiveEvent);  // Устанавливаем функцию, вызываемую при получении данных по I2C
-  analogWriteFrequency(25000);  // Устанавливаем частоту ШИМ
+  analogWriteFreq(25000);  // Устанавливаем частоту ШИМ
+  Serial.begin(9600);
 }
 
 void loop() {
